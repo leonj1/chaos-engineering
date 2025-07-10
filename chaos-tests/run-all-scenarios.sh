@@ -163,12 +163,13 @@ echo ""
 # Check prerequisites
 check_prerequisites
 
-# Offer to start monitoring
+# Note about monitoring
 echo ""
-print_info "It's recommended to run the monitoring dashboard in another terminal:"
-echo -e "  ${CYAN}make chaos-monitor-advanced${NC}"
+print_info "TIP: Run the monitoring dashboard in another terminal:"
+echo -e "  ${CYAN}make chaos-monitor-advanced${NC} or ${CYAN}make chaos-monitor-tui${NC}"
 echo ""
-read -p "Press Enter to continue with the tests..."
+print_info "Starting tests in 3 seconds..."
+sleep 3
 
 # Scenario 1: Region Failure
 print_scenario "Region Failure Simulation"
@@ -222,13 +223,10 @@ run_scenario "Resource Exhaustion" \
 # Show summary
 show_summary
 
-# Offer to view report
+# Show report location
 echo ""
-read -p "Would you like to view the detailed report? (y/n) " -n 1 -r
-echo ""
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    less "$REPORT_FILE"
-fi
+print_info "Detailed report saved to: $REPORT_FILE"
+print_info "To view the report, run: less $REPORT_FILE"
 
 # Success exit
 if [ $FAILED_SCENARIOS -eq 0 ]; then

@@ -117,6 +117,21 @@ chaos-monitor-advanced:
 	@echo "Press Ctrl+C to stop monitoring"
 	@./chaos-tests/monitoring/monitor-advanced.sh
 
+# Build the TUI monitor using Docker
+build-monitor-tui:
+	@echo "Building Chaos Monitor TUI..."
+	@docker build -f Dockerfile.monitor -t chaos-monitor-tui:latest .
+	@echo "✓ Monitor TUI built successfully"
+
+# Run the TUI monitor
+chaos-monitor-tui: build-monitor-tui
+	@echo "Starting Chaos Monitor TUI..."
+	@echo "Controls: 'q' to quit, 'r' to force refresh"
+	@docker run --rm -it \
+		--network host \
+		-v /var/run/docker.sock:/var/run/docker.sock:ro \
+		chaos-monitor-tui:latest
+
 # Run region failure chaos test
 chaos-region-failure:
 	@echo "Running Region Failure Chaos Test..."
@@ -190,9 +205,8 @@ chaos-test-all:
 	@echo "This will test all 7 chaos scenarios sequentially"
 	@echo "Estimated time: 15-20 minutes"
 	@echo ""
-	@echo "TIP: Run 'make chaos-monitor-advanced' in another terminal first"
+	@echo "TIP: Run 'make chaos-monitor-advanced' or 'make chaos-monitor-tui' in another terminal"
 	@echo ""
-	@read -p "Press Enter to start comprehensive testing..." dummy
 	@./chaos-tests/run-all-scenarios.sh
 
 # Interactive chaos test suite

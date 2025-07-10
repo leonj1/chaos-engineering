@@ -200,11 +200,16 @@ sequenceDiagram
 | `make apply` | Deploy nginx to both regions |
 | `make destroy` | Remove all infrastructure |
 
+### Monitoring Commands
+| Command | Description | Features |
+|---------|-------------|----------|
+| `make chaos-monitor` | Basic bash monitoring | Nginx servers only |
+| `make chaos-monitor-advanced` | Advanced bash monitoring | Nginx + AWS services + Chaos API |
+| `make chaos-monitor-tui` | **Terminal UI monitor** | Smooth updates, no flashing, full dashboard |
+
 ### Basic Chaos Tests
 | Command | Description | Example |
 |---------|-------------|---------|
-| `make chaos-monitor` | Start monitoring dashboard | `make chaos-monitor` |
-| `make chaos-monitor-advanced` | Advanced monitoring with Chaos API status | `make chaos-monitor-advanced` |
 | `make chaos-region-failure` | Simulate region failure | `make chaos-region-failure CHAOS_REGION=us-east-2` |
 | `make chaos-latency` | Inject network latency | `make chaos-latency CHAOS_REGION=both CHAOS_LATENCY_MS=3000` |
 
@@ -497,6 +502,41 @@ lambda:      Availability:  85.0% | OK:  170 | Throttled:  15 | Outage:  15
 💡 Tips:
   - Throttling detected: Implement exponential backoff
   - Service outage detected: Check circuit breaker implementation
+```
+
+### Terminal UI Monitor (New!)
+The TUI monitor (`make chaos-monitor-tui`) provides the best monitoring experience with:
+- **No screen flashing** - Smooth updates using a proper terminal UI framework
+- **Comprehensive view** - Shows Chaos API status, Nginx servers, and AWS services
+- **Docker-based** - No Go installation required on host
+- **Interactive controls** - Press 'q' to quit, 'r' to force refresh
+- **Smart updates** - Only refreshes changed values, reducing visual noise
+
+Example display:
+```
+┌─ Chaos Engineering Monitor | 14:32:15 | Updates: 42 | Press 'q' to quit ─┐
+│                                                                           │
+│ CHAOS API STATUS                                                         │
+│ ✓ No active chaos configurations                                         │
+│                                                                          │
+│ NGINX WEB SERVERS                                                        │
+│ Endpoint                      Status     Response                        │
+│ ├─ US-EAST-1                  ✓ OK       0.045s                        │
+│ ├─ US-EAST-2                  ✗ FAILED   timeout                       │
+│ └─ Main Site                  ✓ OK       0.052s                        │
+│ Availability: US-EAST-1: 99.5% | US-EAST-2: 0.0%                       │
+│                                                                          │
+│ AWS SERVICES                                                             │
+│ Service              Status     Response                                 │
+│ ├─ S3                ✓ HEALTH   0.123s                                  │
+│ ├─ DYNAMODB          ⚠ THROTT   0.234s                                  │
+│ └─ LAMBDA            ✗ OUTAGE   timeout                                 │
+│                                                                          │
+│ STATISTICS                                                               │
+│ Nginx: US-EAST-1: 199/200 (99.5%) | US-EAST-2: 0/200 (0.0%)           │
+│ Services: S3: 95% | DYNAMODB: 60% | LAMBDA: 85%                        │
+│ Uptime: 2m48s                                                           │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## 📁 Project Structure

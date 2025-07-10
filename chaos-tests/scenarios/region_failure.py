@@ -8,7 +8,20 @@ import subprocess
 import time
 import sys
 import json
+import os
 from datetime import datetime
+
+# Report test status to monitoring
+def report_status(test_type, target, status, details):
+    """Report test status for monitoring"""
+    try:
+        status_cmd = [
+            "/bin/bash", "-c",
+            f"source {os.path.dirname(__file__)}/../lib/test_status.sh && write_test_status '{test_type}' '{target}' '{status}' '{details}'"
+        ]
+        subprocess.run(status_cmd, capture_output=True)
+    except:
+        pass  # Don't fail the test if status reporting fails
 
 class RegionFailureChaos:
     def __init__(self, region, bucket_name="nginx-hello-world"):
@@ -126,6 +139,9 @@ def main():
     print(f"Time: {datetime.now()}")
     print()
     
+    # Report test starting
+    report_status("region-failure", target, "active", f"Simulating region failure in {target}")
+    
     # Pre-test health check
     print("📊 Pre-test Health Check:")
     us_east_1_healthy = test_availability(f"{base_url}/us-east-1.html")
@@ -155,6 +171,7 @@ def main():
     
     # Recover
     input("\nPress Enter to recover...")
+    report_status("region-failure", target, "recovering", "Restoring S3 objects")
     for chaos in chaos_instances:
         chaos.recover()
     
