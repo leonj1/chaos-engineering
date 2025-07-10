@@ -31,5 +31,5 @@ variable "memory" {
 variable "desired_count" {
   description = "Number of ECS tasks to run"
   type        = number
-  default     = 2
+  default     = 1
 }
