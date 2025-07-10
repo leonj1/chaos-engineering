@@ -209,6 +209,13 @@ chaos-test-all:
 	@echo ""
 	@./chaos-tests/run-all-scenarios.sh
 
+# Clean up any stale chaos faults
+chaos-cleanup:
+	@echo "Cleaning up chaos faults..."
+	@python3 chaos-tests/lib/cleanup_faults.py
+	@rm -f /tmp/chaos-tests/*.status.json 2>/dev/null || true
+	@echo "✓ Cleanup complete"
+
 # Interactive chaos test suite
 chaos-test-suite:
 	@echo "Starting Interactive Chaos Test Suite..."

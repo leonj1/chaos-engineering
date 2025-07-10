@@ -73,6 +73,8 @@ type ActiveChaosTest struct {
 	Status      string    // "active", "recovering", "completed"
 	StartTime   time.Time
 	Details     string    // Additional details about the test
+	Source      string    // "status_file", "chaos_api", "behavioral"
+	LastSeen    time.Time // When this test was last detected
 }
 
 // MonitorState represents the complete state of the monitoring system

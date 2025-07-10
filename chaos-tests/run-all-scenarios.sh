@@ -87,6 +87,9 @@ run_scenario() {
         FAILED_SCENARIOS=$((FAILED_SCENARIOS + 1))
     fi
     
+    # Always cleanup faults after each test
+    python3 "$SCRIPT_DIR/lib/cleanup_faults.py" > /dev/null 2>&1
+    
     echo "End time: $(date)" >> "$REPORT_FILE"
     echo "---" >> "$REPORT_FILE"
     

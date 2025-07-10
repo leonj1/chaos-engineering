@@ -30,8 +30,7 @@ class ServiceOutageChaos:
             "probability": self.probability,
             "error": {
                 "statusCode": self.error_code,
-                "code": self._get_error_code(),
-                "message": self._get_error_message()
+                "code": self._get_error_code()
             }
         }
         
@@ -41,10 +40,12 @@ class ServiceOutageChaos:
         print(f"  Error code: {self.error_code}")
         
         try:
-            response = requests.post(self.chaos_api_url, json=fault_config)
+            # LocalStack Chaos API expects an array of faults
+            response = requests.post(self.chaos_api_url, json=[fault_config])
             if response.status_code == 200:
                 result = response.json()
-                self.fault_id = result.get("id")
+                if isinstance(result, list) and len(result) > 0:
+                    self.fault_id = result[0].get("id")
                 print(f"  ✓ Fault injected successfully (ID: {self.fault_id})")
                 return True
             else:

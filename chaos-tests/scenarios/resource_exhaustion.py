@@ -87,8 +87,7 @@ class ResourceExhaustionChaos:
             "probability": 0.8,  # 80% failure rate
             "error": {
                 "statusCode": error_config["status"],
-                "code": error_config["code"],
-                "message": error_config["message"]
+                "code": error_config["code"]
             }
         }
         
@@ -97,23 +96,24 @@ class ResourceExhaustionChaos:
         print(f"  Failure rate: 80%")
         
         try:
-            # Inject primary fault
-            response = requests.post(self.chaos_api_url, json=primary_fault)
+            # Inject primary fault - LocalStack expects an array
+            response = requests.post(self.chaos_api_url, json=[primary_fault])
             if response.status_code == 200:
                 result = response.json()
-                self.fault_ids.append(result.get("id"))
-                print(f"  ✓ Primary fault injected (ID: {result.get('id')})")
+                if isinstance(result, list) and len(result) > 0:
+                    self.fault_ids.append(result[0].get("id"))
+                    print(f"  ✓ Primary fault injected (ID: {result[0].get('id')})")
                 
                 # Add intermittent fault for realistic behavior
                 intermittent_fault = primary_fault.copy()
                 intermittent_fault["probability"] = 0.3  # 30% for intermittent
-                intermittent_fault["error"]["message"] = "Approaching resource limits."
                 
-                response = requests.post(self.chaos_api_url, json=intermittent_fault)
+                response = requests.post(self.chaos_api_url, json=[intermittent_fault])
                 if response.status_code == 200:
                     result = response.json()
-                    self.fault_ids.append(result.get("id"))
-                    print(f"  ✓ Warning fault injected (ID: {result.get('id')})")
+                    if isinstance(result, list) and len(result) > 0:
+                        self.fault_ids.append(result[0].get("id"))
+                        print(f"  ✓ Warning fault injected (ID: {result[0].get('id')})")
                 
                 return True
             else:

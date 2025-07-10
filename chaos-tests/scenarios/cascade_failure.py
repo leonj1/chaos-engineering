@@ -75,18 +75,19 @@ class CascadeFailureChaos:
             "probability": probability,
             "error": {
                 "statusCode": error_code,
-                "code": f"{service.upper()}ServiceException",
-                "message": f"Cascade failure: {service} is experiencing issues"
+                "code": f"{service.upper()}ServiceException"
             }
         }
         
         try:
-            response = requests.post(self.chaos_api_url, json=fault_config)
+            # LocalStack Chaos API expects an array of faults
+            response = requests.post(self.chaos_api_url, json=[fault_config])
             if response.status_code == 200:
                 result = response.json()
-                fault_id = result.get("id")
-                self.fault_ids.append(fault_id)
-                print(f"    ✓ Fault injected (ID: {fault_id})")
+                if isinstance(result, list) and len(result) > 0:
+                    fault_id = result[0].get("id")
+                    self.fault_ids.append(fault_id)
+                    print(f"    ✓ Fault injected (ID: {fault_id})")
                 return True
             else:
                 print(f"    ✗ Failed to inject fault: {response.status_code}")

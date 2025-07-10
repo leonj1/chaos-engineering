@@ -34,28 +34,29 @@ class APIThrottlingChaos:
             "probability": 1.0,  # Always throttle when limit exceeded
             "error": {
                 "statusCode": 429,
-                "code": self._get_throttle_error_code(),
-                "message": f"Rate exceeded. Maximum allowed: {self.requests_per_second} requests per second."
+                "code": self._get_throttle_error_code()
             }
         }
         
         try:
-            response = requests.post(self.chaos_api_url, json=fault_config)
+            # LocalStack Chaos API expects an array of faults
+            response = requests.post(self.chaos_api_url, json=[fault_config])
             if response.status_code == 200:
                 result = response.json()
-                self.fault_ids.append(result.get("id"))
-                print(f"  ✓ Throttling fault injected (ID: {result.get('id')})")
+                if isinstance(result, list) and len(result) > 0:
+                    self.fault_ids.append(result[0].get("id"))
+                    print(f"  ✓ Throttling fault injected (ID: {result[0].get('id')})")
                 
                 # Also inject progressive throttling (warn at 80% of limit)
                 warning_config = fault_config.copy()
                 warning_config["probability"] = 0.2  # 20% chance when approaching limit
-                warning_config["error"]["message"] = "Approaching rate limit. Consider implementing backoff."
                 
-                response = requests.post(self.chaos_api_url, json=warning_config)
+                response = requests.post(self.chaos_api_url, json=[warning_config])
                 if response.status_code == 200:
                     result = response.json()
-                    self.fault_ids.append(result.get("id"))
-                    print(f"  ✓ Warning fault injected (ID: {result.get('id')})")
+                    if isinstance(result, list) and len(result) > 0:
+                        self.fault_ids.append(result[0].get("id"))
+                        print(f"  ✓ Warning fault injected (ID: {result[0].get('id')})")
                 
                 return True
             else:
