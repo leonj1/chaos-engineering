@@ -97,12 +97,25 @@ destroy: build-terraform
 # Chaos Engineering Targets
 CHAOS_REGION ?= us-east-1
 CHAOS_LATENCY_MS ?= 2000
+CHAOS_SERVICE ?= s3
+CHAOS_PROBABILITY ?= 1.0
+CHAOS_ERROR_CODE ?= 503
+CHAOS_RPS_LIMIT ?= 10
+CHAOS_RESOURCE_TYPE ?= throughput
+CHAOS_NETWORK_LATENCY ?= 2000
+CHAOS_NETWORK_JITTER ?= 500
 
 # Run chaos monitoring dashboard
 chaos-monitor:
 	@echo "Starting Chaos Engineering Monitoring Dashboard..."
 	@echo "Press Ctrl+C to stop monitoring"
 	@./chaos-tests/monitoring/monitor.sh
+
+# Run advanced chaos monitoring dashboard
+chaos-monitor-advanced:
+	@echo "Starting Advanced Chaos Engineering Monitoring Dashboard..."
+	@echo "Press Ctrl+C to stop monitoring"
+	@./chaos-tests/monitoring/monitor-advanced.sh
 
 # Run region failure chaos test
 chaos-region-failure:
@@ -117,35 +130,147 @@ chaos-latency:
 	@echo "Latency: $(CHAOS_LATENCY_MS)ms"
 	@./chaos-tests/run-chaos-test.sh latency $(CHAOS_REGION) $(CHAOS_LATENCY_MS)
 
+# Run service outage chaos test
+chaos-service-outage:
+	@echo "Running Service Outage Chaos Test..."
+	@echo "Service: $(CHAOS_SERVICE)"
+	@echo "Region: $(CHAOS_REGION)"
+	@echo "Probability: $(CHAOS_PROBABILITY)"
+	@echo "Error Code: $(CHAOS_ERROR_CODE)"
+	@./chaos-tests/run-chaos-test.sh service-outage $(CHAOS_SERVICE) $(CHAOS_REGION) $(CHAOS_PROBABILITY) $(CHAOS_ERROR_CODE)
+
+# Run API throttling chaos test
+chaos-api-throttling:
+	@echo "Running API Throttling Chaos Test..."
+	@echo "Service: $(CHAOS_SERVICE)"
+	@echo "Region: $(CHAOS_REGION)"
+	@echo "RPS Limit: $(CHAOS_RPS_LIMIT)"
+	@./chaos-tests/run-chaos-test.sh api-throttling $(CHAOS_SERVICE) $(CHAOS_REGION) $(CHAOS_RPS_LIMIT)
+
+# Run cascade failure chaos test
+chaos-cascade-failure:
+	@echo "Running Cascade Failure Chaos Test..."
+	@echo "Initial Service: $(CHAOS_SERVICE)"
+	@echo "Region: $(CHAOS_REGION)"
+	@./chaos-tests/run-chaos-test.sh cascade-failure $(CHAOS_SERVICE) $(CHAOS_REGION)
+
+# Run network partition chaos test
+chaos-network-partition:
+	@echo "Running Network Partition Chaos Test..."
+	@echo "Latency: $(CHAOS_NETWORK_LATENCY)ms"
+	@echo "Jitter: $(CHAOS_NETWORK_JITTER)ms"
+	@./chaos-tests/run-chaos-test.sh network-partition $(CHAOS_NETWORK_LATENCY) $(CHAOS_NETWORK_JITTER)
+
+# Run network partition with gradual degradation
+chaos-network-gradual:
+	@echo "Running Gradual Network Degradation Test..."
+	@./chaos-tests/run-chaos-test.sh network-partition gradual
+
+# Run extreme network partition
+chaos-network-extreme:
+	@echo "Running Extreme Network Partition Test..."
+	@./chaos-tests/run-chaos-test.sh network-partition extreme
+
+# Run resource exhaustion chaos test
+chaos-resource-exhaustion:
+	@echo "Running Resource Exhaustion Chaos Test..."
+	@echo "Service: $(CHAOS_SERVICE)"
+	@echo "Resource Type: $(CHAOS_RESOURCE_TYPE)"
+	@./chaos-tests/run-chaos-test.sh resource-exhaustion $(CHAOS_SERVICE) $(CHAOS_RESOURCE_TYPE)
+
 # Run full chaos demo
 chaos-demo:
 	@echo "Running Chaos Engineering Demo..."
 	@echo "This will demonstrate various failure scenarios"
 	@./chaos-tests/run-chaos-test.sh demo
 
+# Run all chaos scenarios comprehensively
+chaos-test-all:
+	@echo "Running ALL Chaos Engineering Scenarios..."
+	@echo "This will test all 7 chaos scenarios sequentially"
+	@echo "Estimated time: 15-20 minutes"
+	@echo ""
+	@echo "TIP: Run 'make chaos-monitor-advanced' in another terminal first"
+	@echo ""
+	@read -p "Press Enter to start comprehensive testing..." dummy
+	@./chaos-tests/run-all-scenarios.sh
+
+# Interactive chaos test suite
+chaos-test-suite:
+	@echo "Starting Interactive Chaos Test Suite..."
+	@echo "Select specific scenarios to run"
+	@./chaos-tests/interactive-test-suite.sh
+
 # Show chaos test help
 chaos-help:
 	@echo "Chaos Engineering Test Commands:"
 	@echo "================================"
 	@echo ""
-	@echo "make chaos-monitor"
-	@echo "  Start the monitoring dashboard to observe system health"
+	@echo "Basic Scenarios:"
+	@echo "  make chaos-monitor"
+	@echo "    Start the monitoring dashboard to observe system health"
 	@echo ""
-	@echo "make chaos-region-failure [CHAOS_REGION=us-east-1|us-east-2|both]"
-	@echo "  Simulate a region failure (default: us-east-1)"
-	@echo "  Example: make chaos-region-failure CHAOS_REGION=us-east-2"
+	@echo "  make chaos-region-failure [CHAOS_REGION=us-east-1|us-east-2|both]"
+	@echo "    Simulate a region failure (default: us-east-1)"
+	@echo "    Example: make chaos-region-failure CHAOS_REGION=us-east-2"
 	@echo ""
-	@echo "make chaos-latency [CHAOS_REGION=...] [CHAOS_LATENCY_MS=2000]"
-	@echo "  Inject latency into a region (default: us-east-1, 2000ms)"
-	@echo "  Example: make chaos-latency CHAOS_REGION=both CHAOS_LATENCY_MS=3000"
+	@echo "  make chaos-latency [CHAOS_REGION=...] [CHAOS_LATENCY_MS=2000]"
+	@echo "    Inject latency into a region (default: us-east-1, 2000ms)"
+	@echo "    Example: make chaos-latency CHAOS_REGION=both CHAOS_LATENCY_MS=3000"
 	@echo ""
-	@echo "make chaos-demo"
-	@echo "  Run a full demo of all chaos scenarios"
+	@echo "Advanced Scenarios (using LocalStack Chaos API):"
+	@echo "  make chaos-service-outage [CHAOS_SERVICE=s3] [CHAOS_PROBABILITY=1.0] [CHAOS_ERROR_CODE=503]"
+	@echo "    Simulate service outage with configurable failure rate"
+	@echo "    Example: make chaos-service-outage CHAOS_SERVICE=dynamodb CHAOS_PROBABILITY=0.5"
+	@echo ""
+	@echo "  make chaos-api-throttling [CHAOS_SERVICE=s3] [CHAOS_RPS_LIMIT=10]"
+	@echo "    Simulate API rate limiting and throttling"
+	@echo "    Example: make chaos-api-throttling CHAOS_SERVICE=lambda CHAOS_RPS_LIMIT=5"
+	@echo ""
+	@echo "  make chaos-cascade-failure [CHAOS_SERVICE=s3]"
+	@echo "    Simulate cascading failures across dependent services"
+	@echo "    Example: make chaos-cascade-failure CHAOS_SERVICE=dynamodb"
+	@echo ""
+	@echo "  make chaos-network-partition [CHAOS_NETWORK_LATENCY=2000] [CHAOS_NETWORK_JITTER=500]"
+	@echo "    Simulate network partition with latency"
+	@echo "    Example: make chaos-network-partition CHAOS_NETWORK_LATENCY=5000"
+	@echo ""
+	@echo "  make chaos-network-gradual"
+	@echo "    Test gradual network degradation"
+	@echo ""
+	@echo "  make chaos-network-extreme"
+	@echo "    Test extreme network partition (10s latency)"
+	@echo ""
+	@echo "  make chaos-resource-exhaustion [CHAOS_SERVICE=dynamodb] [CHAOS_RESOURCE_TYPE=throughput]"
+	@echo "    Simulate resource exhaustion scenarios"
+	@echo "    Supported combinations:"
+	@echo "      - dynamodb throughput/storage"
+	@echo "      - lambda concurrency/storage"
+	@echo "      - s3 storage/requests"
+	@echo "      - kinesis shards/throughput"
+	@echo "    Example: make chaos-resource-exhaustion CHAOS_SERVICE=lambda CHAOS_RESOURCE_TYPE=concurrency"
+	@echo ""
+	@echo "Test Execution Commands:"
+	@echo "  make chaos-demo"
+	@echo "    Run a quick demo of all 7 chaos scenarios"
+	@echo ""
+	@echo "  make chaos-test-all"
+	@echo "    Run ALL scenarios comprehensively (15-20 minutes)"
+	@echo ""
+	@echo "  make chaos-test-suite"
+	@echo "    Interactive menu to select specific scenarios to run"
 	@echo ""
 	@echo "Prerequisites:"
 	@echo "  - LocalStack must be running (make start)"
-	@echo "  - Nginx sites must be deployed (make apply)"
+	@echo "  - Infrastructure must be deployed (make apply)"
 	@echo ""
 	@echo "Tips:"
-	@echo "  - Run 'make chaos-monitor' in a separate terminal before testing"
+	@echo "  - Run 'make chaos-monitor' or 'make chaos-monitor-advanced' in a separate terminal"
 	@echo "  - Check chaos-tests/reports/ for detailed logs after tests"
+	@echo "  - Use environment variables to customize test parameters"
+	@echo ""
+	@echo "Quick Start:"
+	@echo "  1. make start                  # Start LocalStack"
+	@echo "  2. make apply                  # Deploy infrastructure"
+	@echo "  3. make chaos-monitor-advanced # In terminal 1"
+	@echo "  4. make chaos-test-all         # In terminal 2"
