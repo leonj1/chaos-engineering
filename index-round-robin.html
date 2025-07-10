@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nginx - Multi-Region Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            transition: background 0.5s ease;
+        }
+        .container {
+            text-align: center;
+            padding: 50px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.2);
+            max-width: 600px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .region {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 30px 0;
+            padding: 20px;
+            border-radius: 10px;
+            transition: all 0.5s ease;
+        }
+        .region.us-east-1 {
+            color: #667eea;
+            border: 3px solid #667eea;
+            background-color: #f0f4ff;
+        }
+        .region.us-east-2 {
+            color: #f5576c;
+            border: 3px solid #f5576c;
+            background-color: #fff0f2;
+        }
+        body.us-east-1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        body.us-east-2 {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .info {
+            margin: 20px 0;
+            color: #666;
+            font-size: 18px;
+        }
+        .timestamp {
+            font-size: 14px;
+            color: #999;
+            margin-top: 20px;
+        }
+        .counter {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Hello World from Nginx!</h1>
+        <div class="region" id="region">Loading...</div>
+        <div class="info">
+            <p>This response is served from the <strong id="region-name">...</strong> region</p>
+            <p>Running on LocalStack S3</p>
+            <p>Chaos Engineering Demo - Round Robin Simulation</p>
+        </div>
+        <div class="timestamp">
+            <p id="time"></p>
+        </div>
+        <div class="counter">
+            <p>Request #<span id="counter">1</span></p>
+        </div>
+    </div>
+    <script>
+        // Simulate round-robin between regions
+        function getRegion() {
+            // Get or initialize counter from localStorage
+            let counter = parseInt(localStorage.getItem('requestCounter') || '0');
+            counter++;
+            localStorage.setItem('requestCounter', counter);
+            
+            // Alternate between regions based on counter
+            const region = (counter % 2 === 1) ? 'US-EAST-1' : 'US-EAST-2';
+            const regionClass = region.toLowerCase();
+            
+            // Update display
+            document.getElementById('region').textContent = region;
+            document.getElementById('region').className = 'region ' + regionClass;
+            document.getElementById('region-name').textContent = region;
+            document.body.className = regionClass;
+            document.getElementById('counter').textContent = counter;
+            
+            return region;
+        }
+        
+        // Initialize on page load
+        document.getElementById('time').textContent = 'Loaded at: ' + new Date().toLocaleString();
+        const currentRegion = getRegion();
+        
+        // Log to console for debugging
+        console.log('Serving from region:', currentRegion);
+    </script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nginx - US-EAST-2 Region</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .container {
+            text-align: center;
+            padding: 50px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.2);
+            max-width: 600px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .region {
+            font-size: 48px;
+            font-weight: bold;
+            color: #f5576c;
+            margin: 30px 0;
+            padding: 20px;
+            border: 3px solid #f5576c;
+            border-radius: 10px;
+            background-color: #fff0f2;
+        }
+        .info {
+            margin: 20px 0;
+            color: #666;
+            font-size: 18px;
+        }
+        .timestamp {
+            font-size: 14px;
+            color: #999;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Hello World from Nginx!</h1>
+        <div class="region">US-EAST-2</div>
+        <div class="info">
+            <p>This response is served from the <strong>US-EAST-2</strong> region</p>
+            <p>Running on LocalStack S3</p>
+            <p>Chaos Engineering Demo</p>
+        </div>
+        <div class="timestamp">
+            <p id="time"></p>
+        </div>
+    </div>
+    <script>
+        document.getElementById('time').textContent = 'Loaded at: ' + new Date().toLocaleString();
+    </script>
+</body>
+</html>
