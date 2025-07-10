@@ -14,7 +14,7 @@ endif
 # Project name for consistency
 PROJECT_NAME := chaos-engineering
 
-.PHONY: start stop restart build
+.PHONY: start stop restart build init plan apply destroy
 
 start:
 	@echo "Starting LocalStack Pro on port $(LOCALSTACK_PORT)..."
@@ -50,3 +50,43 @@ restart: stop start
 build:
 	@echo "Pulling latest LocalStack Pro image..."
 	docker pull localstack/localstack-pro:latest
+
+# Terraform commands
+TERRAFORM_IMAGE := terraform-runner:latest
+TERRAFORM_RUN := docker run --rm \
+	--network host \
+	-v $(shell pwd)/terraform:/workspace \
+	-v $(shell pwd):/app \
+	-e AWS_ACCESS_KEY_ID=test \
+	-e AWS_SECRET_ACCESS_KEY=test \
+	-e AWS_DEFAULT_REGION=us-east-1 \
+	$(TERRAFORM_IMAGE)
+
+# Build terraform Docker image
+build-terraform:
+	@echo "Building Terraform Docker image..."
+	docker build -f Dockerfile.terraform -t $(TERRAFORM_IMAGE) .
+
+# Initialize Terraform
+init: build-terraform
+	@echo "Initializing Terraform..."
+	$(TERRAFORM_RUN) init
+
+# Plan Terraform changes
+plan: build-terraform
+	@echo "Planning Terraform changes..."
+	$(TERRAFORM_RUN) plan -out=tfplan
+
+# Apply Terraform changes
+apply: build-terraform
+	@echo "Applying Terraform changes..."
+	@if [ -f terraform/tfplan ]; then \
+		$(TERRAFORM_RUN) apply tfplan; \
+	else \
+		$(TERRAFORM_RUN) apply -auto-approve; \
+	fi
+
+# Destroy Terraform resources
+destroy: build-terraform
+	@echo "Destroying Terraform resources..."
+	$(TERRAFORM_RUN) destroy -auto-approve

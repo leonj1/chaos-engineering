@@ -1,8 +1,24 @@
 # LocalStack
 volume/
 .localstack/
+
+# Terraform
 *.tfstate
 *.tfstate.*
+*.tfplan
+tfplan
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.auto.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+crash.log
+crash.*.log
 
 # Environment files
 .env
