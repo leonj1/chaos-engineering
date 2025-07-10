@@ -18,7 +18,7 @@ cd "$SCRIPT_DIR/.."
 
 # Test configuration
 REPORT_FILE="chaos-tests/reports/comprehensive_test_$(date +%Y%m%d_%H%M%S).log"
-TOTAL_SCENARIOS=7
+TOTAL_SCENARIOS=8
 CURRENT_SCENARIO=0
 FAILED_SCENARIOS=0
 SKIPPED_SCENARIOS=0
@@ -222,6 +222,13 @@ print_info "Testing DynamoDB throughput exhaustion"
 run_scenario "Resource Exhaustion" \
     "python3 $SCRIPT_DIR/scenarios/resource_exhaustion.py dynamodb throughput <<< $'\n\n'" \
     5
+
+# Scenario 8: US-EAST-2 Region Failure
+print_scenario "US-EAST-2 Region Failure"
+print_info "Testing system behavior when us-east-2 region becomes unavailable"
+run_scenario "US-EAST-2 Region Failure" \
+    "python3 $SCRIPT_DIR/scenarios/region_failure.py us-east-2 <<< $'\n'" \
+    10
 
 # Show summary
 show_summary

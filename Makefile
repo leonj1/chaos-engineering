@@ -14,10 +14,15 @@ endif
 # Project name for consistency
 PROJECT_NAME := chaos-engineering
 
-.PHONY: help start stop restart build init plan apply destroy chaos-monitor chaos-region-failure chaos-latency chaos-demo chaos-help
+.PHONY: help all start stop restart build init plan apply destroy chaos-monitor chaos-region-failure chaos-latency chaos-demo chaos-help
 
 # Default target
 .DEFAULT_GOAL := help
+
+# Run all targets in the expected order
+all: build start init-clean apply chaos-test-all stop
+	@echo "✓ All chaos engineering tests completed successfully!"
+	@echo "Check chaos-tests/reports/ for detailed test results"
 
 start:
 	@echo "Starting LocalStack Pro on port $(LOCALSTACK_PORT)..."
@@ -42,9 +47,14 @@ start:
 	done
 
 stop:
-	@echo "Stopping LocalStack Pro..."
+	@echo "Stopping LocalStack Pro and cleaning up resources..."
+	@echo "Destroying AWS resources first..."
+	@$(MAKE) destroy-aws || true
+	@echo "Cleaning up terraform state..."
+	@$(MAKE) terraform-clean || true
+	@echo "Stopping LocalStack containers..."
 	$(DOCKER_COMPOSE) -p $(PROJECT_NAME) down
-	@echo "LocalStack Pro stopped."
+	@echo "LocalStack Pro stopped and resources cleaned up."
 
 restart: stop start
 	@echo "LocalStack Pro restarted successfully."
@@ -56,8 +66,11 @@ build:
 
 # Terraform commands
 TERRAFORM_IMAGE := terraform-runner:latest
+# Note: The Docker image now runs as user 1000:1000 internally
+# This matches the typical Linux user ID to prevent permission issues
 TERRAFORM_RUN := docker run --rm \
 	--network host \
+	--user 1000:1000 \
 	-v $(shell pwd)/terraform:/workspace \
 	-v $(shell pwd):/app \
 	-e AWS_ACCESS_KEY_ID=test \
@@ -70,10 +83,34 @@ build-terraform:
 	@echo "Building Terraform Docker image..."
 	docker build -f Dockerfile.terraform -t $(TERRAFORM_IMAGE) .
 
+# Clean terraform state and cache
+terraform-clean:
+	@echo "Cleaning Terraform state and cache..."
+	@rm -f terraform/terraform.tfstate* || true
+	@rm -f terraform/tfplan || true
+	@rm -f terraform/.terraform.lock.hcl || true
+	@rm -rf terraform/.terraform || true
+	@echo "Terraform state cleaned."
+
+# Fix permissions on terraform files owned by root
+fix-terraform-permissions:
+	@echo "Fixing permissions on terraform files..."
+	@if [ -d terraform/.terraform ] || [ -f terraform/.terraform.lock.hcl ]; then \
+		echo "Found root-owned terraform files, fixing ownership..."; \
+		sudo chown -R $(shell id -u):$(shell id -g) terraform/ || true; \
+		echo "Ownership fixed."; \
+	else \
+		echo "No root-owned terraform files found."; \
+	fi
+
 # Initialize Terraform
-init: build-terraform
+init: build-terraform fix-terraform-permissions
 	@echo "Initializing Terraform..."
 	$(TERRAFORM_RUN) init
+
+# Initialize with clean state
+init-clean: terraform-clean init
+	@echo "Terraform initialized with clean state."
 
 # Plan Terraform changes
 plan: build-terraform
@@ -93,6 +130,29 @@ apply: build-terraform
 destroy: build-terraform
 	@echo "Destroying Terraform resources..."
 	$(TERRAFORM_RUN) destroy -auto-approve
+
+# Force unlock terraform state (pass LOCK_ID if known)
+terraform-unlock: build-terraform
+	@echo "Force unlocking Terraform state..."
+	@if [ -z "$(LOCK_ID)" ]; then \
+		echo "Attempting to unlock any existing locks..."; \
+		$(TERRAFORM_RUN) force-unlock -force auto || true; \
+	else \
+		$(TERRAFORM_RUN) force-unlock -force $(LOCK_ID) || true; \
+	fi
+	@echo "Terraform state unlock attempted."
+
+# Destroy AWS resources with proper cleanup
+destroy-aws: build-terraform
+	@echo "Destroying AWS resources with cleanup..."
+	@echo "Attempting to unlock any existing terraform locks..."
+	@$(MAKE) terraform-unlock || true
+	@echo "Importing existing IAM resources to state if they exist..."
+	@$(TERRAFORM_RUN) import module.ecs_us_east_1.aws_iam_role.ecs_task_execution nginx-hello-world-ecs-task-execution-us-east-1 2>/dev/null || true
+	@$(TERRAFORM_RUN) import module.ecs_us_east_2.aws_iam_role.ecs_task_execution nginx-hello-world-ecs-task-execution-us-east-2 2>/dev/null || true
+	@echo "Destroying terraform resources..."
+	@$(TERRAFORM_RUN) destroy -auto-approve || true
+	@echo "AWS resources destroyed."
 
 # Chaos Engineering Targets
 CHAOS_REGION ?= us-east-1
@@ -202,7 +262,7 @@ chaos-demo:
 # Run all chaos scenarios comprehensively
 chaos-test-all:
 	@echo "Running ALL Chaos Engineering Scenarios..."
-	@echo "This will test all 7 chaos scenarios sequentially"
+	@echo "This will test all 8 chaos scenarios sequentially"
 	@echo "Estimated time: 15-20 minutes"
 	@echo ""
 	@echo "TIP: Run 'make chaos-monitor-advanced' or 'make chaos-monitor-tui' in another terminal"

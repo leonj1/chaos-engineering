@@ -31,6 +31,7 @@ resource "aws_cloudwatch_log_group" "main" {
 # Create ECS task execution role
 resource "aws_iam_role" "ecs_task_execution" {
   name = "${var.app_name}-ecs-task-execution-${var.region}"
+  force_detach_policies = true
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -47,6 +48,10 @@ resource "aws_iam_role" "ecs_task_execution" {
 
   tags = {
     Name = "${var.app_name}-ecs-task-execution-${var.region}"
+  }
+
+  lifecycle {
+    create_before_destroy = false
   }
 }
 
