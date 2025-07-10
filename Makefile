@@ -14,7 +14,10 @@ endif
 # Project name for consistency
 PROJECT_NAME := chaos-engineering
 
-.PHONY: start stop restart build init plan apply destroy
+.PHONY: help start stop restart build init plan apply destroy chaos-monitor chaos-region-failure chaos-latency chaos-demo chaos-help
+
+# Default target
+.DEFAULT_GOAL := help
 
 start:
 	@echo "Starting LocalStack Pro on port $(LOCALSTACK_PORT)..."
@@ -90,3 +93,59 @@ apply: build-terraform
 destroy: build-terraform
 	@echo "Destroying Terraform resources..."
 	$(TERRAFORM_RUN) destroy -auto-approve
+
+# Chaos Engineering Targets
+CHAOS_REGION ?= us-east-1
+CHAOS_LATENCY_MS ?= 2000
+
+# Run chaos monitoring dashboard
+chaos-monitor:
+	@echo "Starting Chaos Engineering Monitoring Dashboard..."
+	@echo "Press Ctrl+C to stop monitoring"
+	@./chaos-tests/monitoring/monitor.sh
+
+# Run region failure chaos test
+chaos-region-failure:
+	@echo "Running Region Failure Chaos Test..."
+	@echo "Target Region: $(CHAOS_REGION)"
+	@./chaos-tests/run-chaos-test.sh region-failure $(CHAOS_REGION)
+
+# Run latency injection chaos test
+chaos-latency:
+	@echo "Running Latency Injection Chaos Test..."
+	@echo "Target Region: $(CHAOS_REGION)"
+	@echo "Latency: $(CHAOS_LATENCY_MS)ms"
+	@./chaos-tests/run-chaos-test.sh latency $(CHAOS_REGION) $(CHAOS_LATENCY_MS)
+
+# Run full chaos demo
+chaos-demo:
+	@echo "Running Chaos Engineering Demo..."
+	@echo "This will demonstrate various failure scenarios"
+	@./chaos-tests/run-chaos-test.sh demo
+
+# Show chaos test help
+chaos-help:
+	@echo "Chaos Engineering Test Commands:"
+	@echo "================================"
+	@echo ""
+	@echo "make chaos-monitor"
+	@echo "  Start the monitoring dashboard to observe system health"
+	@echo ""
+	@echo "make chaos-region-failure [CHAOS_REGION=us-east-1|us-east-2|both]"
+	@echo "  Simulate a region failure (default: us-east-1)"
+	@echo "  Example: make chaos-region-failure CHAOS_REGION=us-east-2"
+	@echo ""
+	@echo "make chaos-latency [CHAOS_REGION=...] [CHAOS_LATENCY_MS=2000]"
+	@echo "  Inject latency into a region (default: us-east-1, 2000ms)"
+	@echo "  Example: make chaos-latency CHAOS_REGION=both CHAOS_LATENCY_MS=3000"
+	@echo ""
+	@echo "make chaos-demo"
+	@echo "  Run a full demo of all chaos scenarios"
+	@echo ""
+	@echo "Prerequisites:"
+	@echo "  - LocalStack must be running (make start)"
+	@echo "  - Nginx sites must be deployed (make apply)"
+	@echo ""
+	@echo "Tips:"
+	@echo "  - Run 'make chaos-monitor' in a separate terminal before testing"
+	@echo "  - Check chaos-tests/reports/ for detailed logs after tests"
