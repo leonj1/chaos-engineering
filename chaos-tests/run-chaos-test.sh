@@ -46,6 +46,7 @@ show_usage() {
     echo "  cascade-failure <service> [region]              - Cascading service failures"
     echo "  network-partition <latency_ms> [jitter_ms]      - Network partition/latency"
     echo "  resource-exhaustion <service> <type>            - Resource limit exhaustion"
+    echo "  main-site-failure                               - Test main site with both regions down"
     echo "  monitor                              - Start monitoring dashboard"
     echo "  demo                                 - Run demo sequence"
     echo ""
@@ -57,6 +58,7 @@ show_usage() {
     echo "  $0 cascade-failure s3"
     echo "  $0 network-partition 2000 500"
     echo "  $0 resource-exhaustion dynamodb throughput"
+    echo "  $0 main-site-failure"
     echo "  $0 monitor"
     echo "  $0 demo"
 }
@@ -271,6 +273,11 @@ case "$1" in
         fi
         shift
         python3 "$SCRIPT_DIR/scenarios/resource_exhaustion.py" "$@"
+        ;;
+        
+    "main-site-failure")
+        check_prerequisites
+        python3 "$SCRIPT_DIR/scenarios/main_site_failure.py"
         ;;
         
     "monitor")

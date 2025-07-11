@@ -131,13 +131,31 @@ func (m *model) updateChaosAPIStatus() {
 }
 
 func (m *model) updateNginxEndpoints() {
+	// Get terraform outputs for dynamic endpoint configuration
+	domainName := m.getTerraformOutput("domain_name", "hello.localstack.cloud")
+	usEast1ALB := m.getTerraformOutput("us_east_1_alb_dns", "")
+	usEast2ALB := m.getTerraformOutput("us_east_2_alb_dns", "")
+
 	endpoints := []struct {
 		name string
 		url  string
 	}{
-		{"US-EAST-1", nginxURL + "/us-east-1.html"},
-		{"US-EAST-2", nginxURL + "/us-east-2.html"},
-		{"Main Site", nginxURL + "/index.html"},
+		{"Main Site", "http://" + domainName},
+	}
+
+	// Add regional endpoints if ALB DNS names are available
+	if usEast1ALB != "" {
+		endpoints = append(endpoints, struct{name string; url string}{"US-EAST-1", "http://" + usEast1ALB})
+	} else {
+		// Fallback to S3 static files if ALB not available
+		endpoints = append(endpoints, struct{name string; url string}{"US-EAST-1", nginxURL + "/us-east-1.html"})
+	}
+
+	if usEast2ALB != "" {
+		endpoints = append(endpoints, struct{name string; url string}{"US-EAST-2", "http://" + usEast2ALB})
+	} else {
+		// Fallback to S3 static files if ALB not available
+		endpoints = append(endpoints, struct{name string; url string}{"US-EAST-2", nginxURL + "/us-east-2.html"})
 	}
 
 	m.state.NginxEndpoints = nil
@@ -365,6 +383,42 @@ func (m model) View() string {
 	}
 
 	return ui.RenderDashboard(&m.state, m.width, m.height)
+}
+
+func (m *model) getTerraformOutput(outputName string, defaultValue string) string {
+	// First check environment variables (preferred method for Docker)
+	envMappings := map[string]string{
+		"domain_name":      "CHAOS_DOMAIN_NAME",
+		"us_east_1_alb_dns": "CHAOS_ALB_US_EAST_1",
+		"us_east_2_alb_dns": "CHAOS_ALB_US_EAST_2",
+	}
+	
+	if envVar, exists := envMappings[outputName]; exists {
+		if envValue := os.Getenv(envVar); envValue != "" {
+			return envValue
+		}
+	}
+	
+	// Fallback to TF_VAR_ prefix
+	envVar := "TF_VAR_" + outputName
+	if envValue := os.Getenv(envVar); envValue != "" {
+		return envValue
+	}
+	
+	// If running outside Docker, try terraform command
+	if _, err := os.Stat("/.dockerenv"); os.IsNotExist(err) {
+		cmd := exec.Command("terraform", "output", "-raw", outputName)
+		cmd.Dir = "../../../terraform"
+		
+		if output, err := cmd.Output(); err == nil {
+			result := strings.TrimSpace(string(output))
+			if result != "" {
+				return result
+			}
+		}
+	}
+	
+	return defaultValue
 }
 
 func main() {

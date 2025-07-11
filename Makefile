@@ -14,13 +14,13 @@ endif
 # Project name for consistency
 PROJECT_NAME := chaos-engineering
 
-.PHONY: help all start stop restart build init plan apply destroy chaos-monitor chaos-region-failure chaos-latency chaos-demo chaos-help
+.PHONY: help all start stop restart build init plan apply destroy upload-files chaos-monitor chaos-region-failure chaos-latency chaos-demo chaos-help chaos-main-site-failure
 
 # Default target
 .DEFAULT_GOAL := help
 
 # Run all targets in the expected order
-all: build start init-clean apply chaos-test-all stop
+all: build start init-clean init plan apply upload-files
 	@echo "✓ All chaos engineering tests completed successfully!"
 	@echo "Check chaos-tests/reports/ for detailed test results"
 
@@ -46,7 +46,7 @@ start:
 		sleep 2; \
 	done
 
-stop:
+stop: destroy-aws
 	@echo "Stopping LocalStack Pro and cleaning up resources..."
 	@echo "Destroying AWS resources first..."
 	@$(MAKE) destroy-aws || true
@@ -154,6 +154,25 @@ destroy-aws: build-terraform
 	@$(TERRAFORM_RUN) destroy -auto-approve || true
 	@echo "AWS resources destroyed."
 
+# Upload HTML files to S3 bucket
+upload-files:
+	@echo "Uploading HTML files to S3 bucket..."
+	@if ! docker exec localstack-chaos-engineering awslocal s3 ls s3://nginx-hello-world >/dev/null 2>&1; then \
+		echo "Error: S3 bucket 'nginx-hello-world' not found. Run 'make apply' first."; \
+		exit 1; \
+	fi
+	@echo "Uploading index.html..."
+	@docker exec -i localstack-chaos-engineering awslocal s3 cp - s3://nginx-hello-world/index.html \
+		--content-type text/html < index.html
+	@echo "Uploading us-east-1.html..."
+	@docker exec -i localstack-chaos-engineering awslocal s3 cp - s3://nginx-hello-world/us-east-1.html \
+		--content-type text/html < index-us-east-1.html
+	@echo "Uploading us-east-2.html..."
+	@docker exec -i localstack-chaos-engineering awslocal s3 cp - s3://nginx-hello-world/us-east-2.html \
+		--content-type text/html < index-us-east-2.html
+	@echo "✓ HTML files uploaded successfully!"
+	@echo "Access the website at: http://localhost:$(LOCALSTACK_PORT)/nginx-hello-world/index.html"
+
 # Chaos Engineering Targets
 CHAOS_REGION ?= us-east-1
 CHAOS_LATENCY_MS ?= 2000
@@ -187,9 +206,16 @@ build-monitor-tui:
 chaos-monitor-tui: build-monitor-tui
 	@echo "Starting Chaos Monitor TUI..."
 	@echo "Controls: 'q' to quit, 'r' to force refresh"
-	@docker run --rm -it \
+	@# Try to get terraform outputs if available
+	@DOMAIN_NAME=$$(cd terraform && terraform output -raw domain_name 2>/dev/null || echo "hello.localstack.cloud"); \
+	ALB_US_EAST_1=$$(cd terraform && terraform output -raw us_east_1_alb_dns 2>/dev/null || echo ""); \
+	ALB_US_EAST_2=$$(cd terraform && terraform output -raw us_east_2_alb_dns 2>/dev/null || echo ""); \
+	docker run --rm -it \
 		--network host \
 		-v /var/run/docker.sock:/var/run/docker.sock:ro \
+		-e CHAOS_DOMAIN_NAME="$$DOMAIN_NAME" \
+		-e CHAOS_ALB_US_EAST_1="$$ALB_US_EAST_1" \
+		-e CHAOS_ALB_US_EAST_2="$$ALB_US_EAST_2" \
 		chaos-monitor-tui:latest
 
 # Run region failure chaos test
@@ -253,6 +279,12 @@ chaos-resource-exhaustion:
 	@echo "Resource Type: $(CHAOS_RESOURCE_TYPE)"
 	@./chaos-tests/run-chaos-test.sh resource-exhaustion $(CHAOS_SERVICE) $(CHAOS_RESOURCE_TYPE)
 
+# Run main site failure test
+chaos-main-site-failure:
+	@echo "Running Main Site Failure Test..."
+	@echo "This test verifies that the main site shows as offline when both regions are down"
+	@./chaos-tests/run-chaos-test.sh main-site-failure
+
 # Run full chaos demo
 chaos-demo:
 	@echo "Running Chaos Engineering Demo..."
@@ -262,7 +294,7 @@ chaos-demo:
 # Run all chaos scenarios comprehensively
 chaos-test-all:
 	@echo "Running ALL Chaos Engineering Scenarios..."
-	@echo "This will test all 8 chaos scenarios sequentially"
+	@echo "This will test all 9 chaos scenarios sequentially"
 	@echo "Estimated time: 15-20 minutes"
 	@echo ""
 	@echo "TIP: Run 'make chaos-monitor-advanced' or 'make chaos-monitor-tui' in another terminal"
@@ -331,9 +363,13 @@ chaos-help:
 	@echo "      - kinesis shards/throughput"
 	@echo "    Example: make chaos-resource-exhaustion CHAOS_SERVICE=lambda CHAOS_RESOURCE_TYPE=concurrency"
 	@echo ""
+	@echo "  make chaos-main-site-failure"
+	@echo "    Test that main site shows offline when both regions are down"
+	@echo "    Verifies VIP/Route53 behavior during complete regional outages"
+	@echo ""
 	@echo "Test Execution Commands:"
 	@echo "  make chaos-demo"
-	@echo "    Run a quick demo of all 7 chaos scenarios"
+	@echo "    Run a quick demo of all chaos scenarios"
 	@echo ""
 	@echo "  make chaos-test-all"
 	@echo "    Run ALL scenarios comprehensively (15-20 minutes)"

@@ -5,6 +5,8 @@ services:
     ports:
       - "${LOCALSTACK_PORT:-4566}:4566"
       - "${LOCALSTACK_EDGE_PORT:-4510-4559}:4510-4559"
+      - "5353:53/tcp"
+      - "5353:53/udp"
     environment:
       - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN}
       - DEBUG=${DEBUG:-0}
@@ -14,6 +16,7 @@ services:
       - LAMBDA_EXECUTOR=${LAMBDA_EXECUTOR:-docker}
       - KINESIS_ERROR_PROBABILITY=${KINESIS_ERROR_PROBABILITY:-0.0}
       - PERSISTENCE=${PERSISTENCE:-0}
+      - DNS_ADDRESS=0.0.0.0
     volumes:
       - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
